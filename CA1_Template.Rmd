@@ -1,0 +1,80 @@
+---
+title: "A Report on various results observed from the Activity Monitoring Dataset of an individual"
+author: "R Vidhya Lakshmi"
+date: "24/04/2020"
+output: html_document
+fig_width: 6
+fig_height: 4
+---
+## Loading and pre-processing the data  
+### Code to download and read the Activity Monitoring dataset from Course website using [URL](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip/)  
+  ```{r , echo=TRUE}
+temp.file<-tempfile()
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", temp.file)
+rep_data<-read.csv(unzip(temp.file, exdir = "rep_data"))
+head(rep_data)
+library(lattice)
+```
+
+## What is the mean total number of steps taken per day?
+### Mean and median of number of steps taken everyday
+  ```{r , echo=TRUE}
+Steps_Cumulative<-aggregate(steps~date,rep_data,sum, na.rm=TRUE)
+hist(Steps_Cumulative$steps,xlab = "No of steps taken everyday", main="Frequency of total number of steps taken everyday", col="blue")
+mean(Steps_Cumulative$steps, na.rm=TRUE)
+median(Steps_Cumulative$steps, na.rm = TRUE)
+```
+
+## What is the average daily activity pattern?
+### Time-series plot for average number of steps taken everyday
+  ```{r , echo=TRUE}
+Steps_timeseries<-tapply(rep_data$steps,rep_data$interval, mean,na.rm = TRUE)
+plot(row.names(Steps_timeseries),Steps_timeseries,type="l", col="blue",main="Time-series plot for average number of steps taken everyday", xlab = "5 min intervals", ylab = "Average no of steps")
+```
+### Interval with the maximum number of steps
+
+  ```{r , echo=TRUE}
+names(which.max(Steps_timeseries))
+```
+
+## Imputing missing values
+### Calculating number of missing values and replacing them with the corresponding mean
+  ```{r , echo=TRUE}
+Total.No.of.Nas<-sum(is.na(rep_data))
+Total.No.of.Nas
+```
+### A dataset  containing a new column with the average mean for each entry for variable "Steps" is created 
+  ```{r , echo=TRUE}
+tmp<-merge(rep_data,aggregate(steps~interval, rep_data, mean, na.rm=TRUE), by=c("interval"))
+tmp[is.na(tmp$steps.x),"steps.x"]<-tmp[is.na(tmp$steps.x),"steps.y"]
+names(tmp)[names(tmp)=="steps.x"]<-"steps"
+```
+### New Dataset with missing values filled in and its histogram for total number of steps 
+  ```{r , echo=TRUE}
+rep_data_without_nas<-tmp[,c("steps","date","interval")]
+Steps_Without_Nas_Cumulative<-aggregate(steps~date,rep_data_without_nas,sum)
+hist(Steps_Without_Nas_Cumulative$steps,main="Total no of steps taken everyday", xlab = "Steps")
+
+```
+### Mean of the new dataset is same as the previous one for rep_data. There is a slight change in median value.
+
+  ```{r , echo=TRUE}
+mean(Steps_Without_Nas_Cumulative$steps)
+median(Steps_Without_Nas_Cumulative$steps)
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+### Creating a New factor Variable with type weekend and weekday
+  ```{r , echo=TRUE}
+rep_data_without_nas$Day<-weekdays(as.Date(rep_data_without_nas$date, "%Y-%m-%d"))
+rep_data_without_nas$type<-ifelse(rep_data_without_nas$Day %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+head(rep_data_without_nas)
+```
+### Observing differences in activity pattern across weekends and weekdays with a time series plot
+### From the below plot, it is evident that the no of steps is more on weekends than on weekdays.
+  ```{r , echo=TRUE,}
+Steps_Cumulative_by_Type<-aggregate(steps~interval+type, rep_data_without_nas,mean)
+par(mfrow=c(1,2))
+xyplot(Steps_Cumulative_by_Type$steps~Steps_Cumulative_by_Type$interval|Steps_Cumulative_by_Type$type,col="Red", type="l",xlab = "interval",ylab = "No of Steps", layout=c(1,2))
+  
+```
